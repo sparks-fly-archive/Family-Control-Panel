@@ -101,8 +101,10 @@ if($action == "editfamily") {
 	$family = $db->fetch_array($query);
 
 	// only team members and family's author can edit family
-	if($mybb->usergroup['cancp'] == "0" || $uid != $family['uid']) {
-		error_no_permission();
+	if($uid != $family['uid']) {
+		if($mybb->usergroup['cancp'] == "0") {
+			error_no_permission();
+		}
 	}
 
 	// select matching class option
@@ -192,6 +194,67 @@ if($action == "do_addmember") {
 	redirect("family.php?action=addmember", "{$lang->family_member_added}");
 }
 
+// edit family member 
+if($action == "editmember") {
+	
+	$fmid = $mybb->input['id'];
+
+	// get family member matching fid
+	$query = $db->query("SELECT * FROM ".TABLE_PREFIX."families_members
+		WHERE fmid = '$fmid'");
+	$fammember = $db->fetch_array($query);
+	$fid = $fammember['fid'];
+
+	// only team members and family's author can edit family
+	if(($uid != $family['uid']  || $uid != $fammember['uid']) && $mybb->usergroup['cancp'] == "0") {
+		error_no_permission();
+	}
+	
+	$genders = array("1" => "{$lang->family_gender_male}", "2" => "{$lang->family_gender_female}", "3" => "{$lang->gender_diff}");
+	$playable = array("1" => "{$lang->family_playable_yes}", "0" => "{$lang->family_playable_no}");
+	
+	foreach($genders as $key => $value) {
+		$checked = "";
+		if($fammember['gender'] == $key) {
+			$checked = "selected";
+		}
+		$gender_bit .= "<option value=\"{$key}\" {$checked}>{$value}</option>";
+	}
+	
+	foreach($playable as $key => $value) {
+		$checked = "";
+		if($fammember['playable'] == $key) {
+			$checked = "selected";
+		}
+		$playable_bit .= "<option value=\"{$key}\">{$value}</option>";
+	}
+
+	// set template
+	eval("\$page = \"".$templates->get("family_editmember")."\";");
+	output_page($page);
+}
+
+// edit family member backend 
+if($action == "do_editmember") {
+
+	$fmid = $mybb->get_input('fmid');
+	$fid = $mybb->get_input('fid');
+	
+	// insert family member into database
+	$new_record = array(
+		"fullname" => $db->escape_string($mybb->get_input('fullname')),
+		"gender" => (int)$mybb->get_input('gender'),
+		"generation" => (int)$mybb->get_input('generation'),
+		"position" => $db->escape_string($mybb->get_input('position')),
+		"age" => (int)$mybb->get_input('age'),
+		"description" => $db->escape_string($mybb->get_input('description')),
+		"picture" => $db->escape_string($mybb->get_input('picture')),
+		"playable" => (int)$mybb->get_input('playable'),
+	);
+	$db->update_query("families_members", $new_record, "fmid = '{$fmid}'");
+	
+	redirect("family.php?action=view&id={$fid}", "{$lang->family_member_added}");
+}
 
 // own family overview
 if($action == "view") {
@@ -271,8 +334,6 @@ if($action == "view") {
 				$i = "";
 			}
 
-
-
 			// check if already registered...
 			$famuser = get_user($fammember['uid']);
 
@@ -291,18 +352,17 @@ if($action == "view") {
 				// generate picture from database url (if set), otherwise use set default image
 				$img_class = "free-img";
 				if(empty($fammember['picture'])) {
-					$fammember['img'] = "<div class=\"{$img_class}\" style=\"background: {$gender_border}\"><img src=\"images/dark/noava.png\" class=\"family-picture\" /></div>";	
+					$fammember['img'] = "<div class=\"{$img_class}\" style=\"background: {$gender_border}\"><a href=\"#description{$fammember['fmid']}\"><img src=\"images/dark/noava.png\" class=\"family-picture\" /></a></div>";	
 				}
 				else {
-					$fammember['img'] = "<div class=\"{$img_class}\" style=\"background: {$gender_border}\"><img src=\"{$fammember['picture']}\" class=\" family-picture\" /></div>";
+					$fammember['img'] = "<div class=\"{$img_class}\" style=\"background: {$gender_border}\"><a href=\"#description{$fammember['fmid']}\"><img src=\"{$fammember['picture']}\" class=\" family-picture\" /></a></div>";
 				}
 
 			}
 			else {
-
 				// generate picture from user avatar
 				$img_class ="taken-img";
-				$fammember['img'] = "<div class=\"{$img_class}\" style=\"background: {$gender_border}\"><img src=\"{$famuser['avatar']}\" class=\"family-picture\" /></div>";
+				$fammember['img'] = "<a href=\"member.php?action=profile&uid={$fammember['uid']}\"><img src=\"{$famuser['avatar']}\" class=\"family-picture\" /></a></div>";
 			}
 
 			// only team and family's author can edit
@@ -321,5 +381,138 @@ if($action == "view") {
 	// set template
 	eval("\$page = \"".$templates->get("family_view")."\";");
 	output_page($page);
+}
+
+// filter families 
+if($action == "filter_families") {
+	
+	$class = $db->escape_string($mybb->get_input('class'));
+	if(empty($class)) {
+		$class = "%";
+	}
+	
+	// get familys matching filter
+	$query = $db->query("SELECT * FROM ".TABLE_PREFIX."families
+		WHERE class LIKE '{$class}'");
+	$familiescount = mysqli_num_rows($query);
+	while($family = $db->fetch_array($query)) {
+		$fid = $family['fid'];
+		
+		// format link to family's page
+		$family['family_link'] = "<a href=\"family.php?action=view&id={$fid}\" target=\"blank_\">{$family['lastname']}</a>";
+		
+		$famclass = $family['class'];
+		
+		$classes = array("1" => "{$lang->family_class_under}", "2" => "{$lang->family_class_middle}", "3" => "{$lang->family_class_high}");
+		foreach($classes as $key => $value) {
+			$checked = "";
+			if($key == $family['famclass']) {
+				$checked = "selected";
+			}
+			$class_bit .= "<option value=\"{$key}\" {$checked}>{$value}</option>";	
+		}
+			
+		
+		// get statistics
+		$query = $db->query("SELECT COUNT(*) as members FROM ".TABLE_PREFIX."families_members 
+			WHERE fid = '$fid'");
+		$members = $db->fetch_field($query, "members");
+		$query = $db->query("SELECT COUNT(*) as members FROM ".TABLE_PREFIX."families_members 
+			WHERE fid = '$fid'
+			AND playable = '1'");
+		$members_playable = $db->fetch_field($query, "members");
+		$query = $db->query("SELECT COUNT(*) as members FROM ".TABLE_PREFIX."families_members 
+			WHERE fid = '$fid'
+			AND playable = '1'
+			AND uid = '0'");
+		$members_free = $db->fetch_field($query, "members");
+		$query = $db->query("SELECT COUNT(*) as members FROM ".TABLE_PREFIX."families_members 
+			WHERE fid = '$fid'
+			AND gender = '1'");
+		$members_male = $db->fetch_field($query, "members");
+		$query = $db->query("SELECT COUNT(*) as members FROM ".TABLE_PREFIX."families_members 
+			WHERE fid = '$fid'
+			AND gender = '2'");
+		$members_female = $db->fetch_field($query, "members");
+		$query = $db->query("SELECT COUNT(*) as members FROM ".TABLE_PREFIX."families_members 
+			WHERE fid = '$fid'
+			AND gender = '3'");
+		$members_diff = $db->fetch_field($query, "members");
+		
+		eval("\$family_bit .= \"".$templates->get("family_filter_families_bit")."\";");
+	}
+	
+	// set template
+	eval("\$page = \"".$templates->get("family_filter_families")."\";");
+	output_page($page);
+}
+
+if($action == "filter_member") {
+	
+	$class = $db->escape_string($mybb->get_input('class'));
+	if(empty($class)) {
+		$class = "%";
+	}
+	$gender = $db->escape_string($mybb->get_input('gender'));
+	if(empty($gender)) {
+		$gender = "%";
+	}
+	$age_start = $db->escape_string($mybb->get_input('age_start'));
+	$age_end = $db->escape_string($mybb->get_input('age_end'));
+	if(empty($age_start) || empty($age_end)) {
+		$age_sql = "";
+	}
+	else {
+		$age_sql = "AND age BETWEEN '$age_start' AND '$age_end'";
+	}
+	
+	$classes = array("1" => "{$lang->family_class_under}", "2" => "{$lang->family_class_middle}", "3" => "{$lang->family_class_high}");
+	foreach($classes as $key => $value) {
+		$class_bit .= "<option value=\"{$key}\">{$value}</option>";	
+	}
+	
+	$genders = array("1" => "{$lang->family_gender_male}", "2" => "{$lang->family_gender_female}", "3" => "{$lang->family_gender_diff}");
+	foreach($genders as $key => $value) {
+		$gender_bit .= "<option value=\"{$key}\">{$value}</option>";
+	}
+	
+	// get family members matching filter
+	$query = $db->query("SELECT * FROM ".TABLE_PREFIX."families_members
+		LEFT JOIN ".TABLE_PREFIX."families ON ".TABLE_PREFIX."families_members.fid = ".TABLE_PREFIX."families.fid
+		WHERE class LIKE '$class'
+		AND gender LIKE '$gender'
+		AND playable = '1'
+		$age_sql
+		AND ".TABLE_PREFIX."families_members.uid = '0'");
+
+	$memberscount = mysqli_num_rows($query);
+	while($fammember = $db->fetch_array($query)) {
+		
+		$famclass = $family['class'];
+		
+		foreach($classes as $key => $value) {
+			$checked = "";
+			if($key == $class) {
+				$checked = "selected";
+			}
+			$class_bit .= "<option value=\"{$key}\" {$checked}>{$value}</option>";	
+		}
+		
+		foreach($genders as $key => $value) {
+			$checked = "";
+			if($gender == $key) {
+				$checked = "selected";
+			}
+			$gender_bit .= "<option value=\"{$key}\" {$checked}>{$value}</option>";
+		}
+		
+		$family['family_link'] = "<a href=\"family.php?action=view&id={$fammember['fid']}\" target=\"blank_\">{$fammember['lastname']}</a>";
+		
+		eval("\$members_bit .= \"".$templates->get("family_filter_members_bit")."\";");
+	}
+	
+	// set template
+	eval("\$page = \"".$templates->get("family_filter_members")."\";");
+	output_page($page);	
 }
 ?>

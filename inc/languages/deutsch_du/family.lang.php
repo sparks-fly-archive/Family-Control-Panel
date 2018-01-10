@@ -21,7 +21,11 @@ $l['family_members'] = "Mitglieder";
 $l['family_free'] = "Frei";
 $l['family_taken'] = "Vergeben";
 $l['family_edit_text'] = "Bearbeiten";
-
+$l['family_full_age'] = "Jahre alt";
+$l['family_families_found'] = "Familien gefunden";
+$l['family_member_found'] = "Familienmitglieder gefunden";
+$l['family_members_free'] = "Freie Mitglieder";
+$l['family_claim'] = "reservieren";
 
 // forms
 $l['family_lastname'] = "Nachname";
@@ -44,6 +48,8 @@ $l['family_playable'] = "Spielbar";
 $l['family_playable_yes'] = "Ja";
 $l['family_playable_no'] = "Nein";
 $l['family_add_yourself'] = "[ <strong><em>Wichtig</em></strong>: Du fügst dich selbst zuerst hinzu! ]";
+$l['family_age_start'] = "Zwischen";
+$l['family_age_end'] = "und";
 
 // misc
 $l['family_family_added'] = "Deine Familie wurde hinzugefügt!";
