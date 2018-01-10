@@ -22,8 +22,9 @@ function family_info()
 
 function family_install()
 {
-	global $db;
+	global $db, $mybb;
 
+	// database changes
 	if(!$db->table_exists("families")) {
 		$db->query("CREATE TABLE `mybb_families` (
   				`fid` int(11) NOT NULL AUTO_INCREMENT,
@@ -31,6 +32,7 @@ function family_install()
   				`lastname` text NOT NULL,
   				`description` text NOT NULL,
   				`class` text NOT NULL,
+  				`founder` int(1) NOT NULL,
   				`tid` int(1) NOT NULL,
   				PRIMARY KEY (`fid`)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;");
@@ -54,6 +56,48 @@ function family_install()
   				PRIMARY KEY (`fmid`)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;");
 	}
+
+	// create settinggroup
+	$setting_group = array(
+    	'name' => 'familycp',
+    	'title' => 'Family Control Panel',
+    	'description' => 'Einstellungen für das Family Control Panel-Plugin.',
+    	'disporder' => -1, // The order your setting group will display
+    	'isdefault' => 0
+	);
+
+	// insert settinggroup into database
+	$gid = $db->insert_query("settinggroups", $setting_group);
+
+	// create settings
+	$setting_array = array(
+    	'familycp_username' => array(
+        	'title' => 'Spitznamen-Profilfeld',
+        	'description' => 'Hier die Field-ID des Spielernamen-Feld angeben.',
+        	'optionscode' => 'text',
+        	'value' => '', // Default
+        	'disporder' => 1
+    	),
+    	'familycp_fid' => array(
+        	'title' => 'Familiengesuche-Unterforum',
+        	'description' => 'In welches Forum (Foren-ID angeben!) sollen die Familiengesuche gepostet werden?',
+        	'optionscode' => 'text',
+        	'value' => '', // Default
+        	'disporder' => 2
+    	),
+	);
+
+	// insert settings into database
+	foreach($setting_array as $name => $setting)
+	{
+    	$setting['name'] = $name;
+    	$setting['gid'] = $gid;
+
+    	$db->insert_query('settings', $setting);
+	}
+
+	// Don't forget this!
+	rebuild_settings();
 }
 
 function family_is_installed()

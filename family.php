@@ -33,7 +33,10 @@ if(!empty($uid)) {
 	else {
 		$addfamily = "<tr>
 		<td class=\"trow1 smalltext\"><a href=\"family.php?action=addmember\">{$lang->family_add_member}</a></td>
-		</tr>";
+		</tr>
+		<tr>
+		   <td class=\"trow2 smalltext\"><a href=\"family.php?action=view\">{$lang->family_edit}</a></td>
+	    </tr>";
 	}
 	eval("\$family_nav_member = \"".$templates->get("family_navigation_member")."\";");	
 }
@@ -78,7 +81,8 @@ if($action == "do_addfamily") {
 		"uid" => (int)$uid,
 		"lastname" => $db->escape_string($mybb->get_input('lastname')),
 		"description" => $db->escape_string($mybb->get_input('description')),
-		"class" => $db->escape_string($mybb->get_input('class'))
+		"class" => $db->escape_string($mybb->get_input('class')),
+		"founder" => (int)$founder
 	);
 	$db->insert_query("families", $new_record);
 
@@ -117,6 +121,15 @@ if($action == "editfamily") {
 		$class_bit .= "<option value=\"{$key}\" {$checked}>{$value}</option>";
 	}
 
+	$founders = array("1" => "{$lang->family_playable_yes}", "0" => "{$lang->family_playable_no}");
+	foreach($founders as $key => $value) {
+		$checked = "";
+		if($family['founder'] == $key) {
+			$checked = "selected";
+		}
+		$founder_bit .= "<option value=\"{$key}\" {$checked}>{$value}</option>";
+	}
+
 
 	// set template
 	eval("\$page = \"".$templates->get("family_editfamily")."\";");
@@ -132,7 +145,8 @@ if($action == "do_editfamily") {
 	$new_record = array(
 		"lastname" => $db->escape_string($mybb->get_input('lastname')),
 		"description" => $db->escape_string($mybb->get_input('description')),
-		"class" => $db->escape_string($mybb->get_input('class'))
+		"class" => $db->escape_string($mybb->get_input('class')),
+		"founder" => (int)$founder
 	);
 	$db->update_query("families", $new_record, "fid = '$fid'");;
 	
@@ -212,6 +226,7 @@ if($action == "editmember") {
 	
 	$genders = array("1" => "{$lang->family_gender_male}", "2" => "{$lang->family_gender_female}", "3" => "{$lang->gender_diff}");
 	$playable = array("1" => "{$lang->family_playable_yes}", "0" => "{$lang->family_playable_no}");
+	$founders = array("1" => "{$lang->family_playable_yes}", "0" => "{$lang->family_playable_no}");
 	
 	foreach($genders as $key => $value) {
 		$checked = "";
@@ -226,7 +241,7 @@ if($action == "editmember") {
 		if($fammember['playable'] == $key) {
 			$checked = "selected";
 		}
-		$playable_bit .= "<option value=\"{$key}\">{$value}</option>";
+		$playable_bit .= "<option value=\"{$key}\" {$checked}>{$value}</option>";
 	}
 
 	// set template
@@ -256,11 +271,11 @@ if($action == "do_editmember") {
 	redirect("family.php?action=view&id={$fid}", "{$lang->family_member_added}");
 }
 
-// own family overview
+// family overview
 if($action == "view") {
 
 	// if there's no specific family you're looking at, get your own
-	$fid = $mybb->get_input('fid');
+	$fid = $mybb->get_input('id');
 	if(empty($fid)) {
 		$fid = $ufid;
 	}
@@ -334,6 +349,8 @@ if($action == "view") {
 				$i = "";
 			}
 
+			$fammember['claimed'] = "";
+
 			// check if already registered...
 			$famuser = get_user($fammember['uid']);
 
@@ -358,17 +375,39 @@ if($action == "view") {
 					$fammember['img'] = "<div class=\"{$img_class}\" style=\"background: {$gender_border}\"><a href=\"#description{$fammember['fmid']}\"><img src=\"{$fammember['picture']}\" class=\" family-picture\" /></a></div>";
 				}
 
+				// check if family member is already claimed
+				if(empty($fammember['claim_username']) && $fammember['playable'] == "1") {
+					// guests can't take a family member
+					if(!empty($uid)) {
+						eval("\$fammember['claimed'] .= \"".$templates->get("family_claim")."\";");
+					}
+					// they need a special template to do that...
+					eval("\$fammember['claimed'] .= \"".$templates->get("family_claim_guest")."\";");
+				}
+				elseif($fammember['playable'] == "0") {
+					eval("\$fammember['claimed'] .= \"".$templates->get("family_claim_unplayable")."\";");	
+				}
+				$lang->family_info_free = $lang->sprintf($lang->family_info_free, $fammember['fmid']);
 			}
 			else {
+				// ignore family member's name and get matching user's name! 
+				$fammember['fullname'] = build_profile_link($famuser['username'], $famuser['uid']);
 				// generate picture from user avatar
 				$img_class ="taken-img";
 				$fammember['img'] = "<a href=\"member.php?action=profile&uid={$fammember['uid']}\"><img src=\"{$famuser['avatar']}\" class=\"family-picture\" /></a></div>";
+				eval("\$fammember['claimed'] .= \"".$templates->get("family_claimed")."\";");
 			}
 
 			// only team and family's author can edit
 			$edit_fammember = "";
 			if($mybb->usergroup['cancp'] == "1" || $uid == $family['uid']) {
-				$edit_fammember = "<div class=\"thead edit-fammember\"><a href=\"family.php?action=editmember&id={$fammember['fmid']}\">{$lang->family_edit_text}</a></div>";
+				$edit_fammember = "<div class=\"thead edit-fammember\" style=\"margin-bottom: 0px;\"><a href=\"family.php?action=editmember&id={$fammember['fmid']}\">{$lang->family_edit_text}</a>";
+
+				// author can delete claims
+				if(($fammember['uid'] != "0" || $fammember['claim_username'] != "") && $fammember['uid'] != $uid) {
+					 $edit_fammember .= "<a href=\"family.php?action=free&id={$fammember['fmid']}\">{$lang->family_set_free}</a>";
+				}
+				$edit_fammember .= "</div>";
 			}
 
 			eval("\$fammember_bit .= \"".$templates->get("family_view_generations_member")."\";");
@@ -390,26 +429,53 @@ if($action == "filter_families") {
 	if(empty($class)) {
 		$class = "%";
 	}
+
+	$founder = $db->escape_string($mybb->get_input('founder'));
+	if(empty($founder)) {
+		$founder = "%";
+	}
+
+
+	$classes = array("1" => "{$lang->family_class_under}", "2" => "{$lang->family_class_middle}", "3" => "{$lang->family_class_high}");
+	foreach($classes as $key => $value) {
+		$class_bit .= "<option value=\"{$key}\">{$value}</option>";	
+	}
+
+	$founders = array("1" => "{$lang->family_playable_yes}", "0" => "{$lang->family_playable_no}");
+	foreach($founders as $key => $value) {
+		$founder_bit .= "<option value=\"{$key}\">{$value}</option>";	
+	}
 	
 	// get familys matching filter
-	$query = $db->query("SELECT * FROM ".TABLE_PREFIX."families
-		WHERE class LIKE '{$class}'");
-	$familiescount = mysqli_num_rows($query);
-	while($family = $db->fetch_array($query)) {
+	$query_family = $db->query("SELECT * FROM ".TABLE_PREFIX."families
+		WHERE class LIKE '{$class}'
+		AND founder LIKE '{$founder}'
+		ORDER BY lastname ASC");
+	$familiescount = mysqli_num_rows($query_family);
+	while($family = $db->fetch_array($query_family)) {
 		$fid = $family['fid'];
+		$class_bit = "";
+		$founder_bit = "";
 		
 		// format link to family's page
 		$family['family_link'] = "<a href=\"family.php?action=view&id={$fid}\" target=\"blank_\">{$family['lastname']}</a>";
 		
 		$famclass = $family['class'];
 		
-		$classes = array("1" => "{$lang->family_class_under}", "2" => "{$lang->family_class_middle}", "3" => "{$lang->family_class_high}");
 		foreach($classes as $key => $value) {
 			$checked = "";
-			if($key == $family['famclass']) {
+			if($key == $class) {
 				$checked = "selected";
 			}
 			$class_bit .= "<option value=\"{$key}\" {$checked}>{$value}</option>";	
+		}
+
+		foreach($founders as $key => $value) {
+			$checked = "";
+			if($key == $founder) {
+				$checked = "selected";
+			}
+			$founder_bit .= "<option value=\"{$key}\" {$checked}>{$value}</option>";	
 		}
 			
 		
@@ -483,12 +549,15 @@ if($action == "filter_member") {
 		AND gender LIKE '$gender'
 		AND playable = '1'
 		$age_sql
-		AND ".TABLE_PREFIX."families_members.uid = '0'");
+		AND ".TABLE_PREFIX."families_members.uid = '0'
+		ORDER BY CAST(age AS signed) ASC, fullname ASC");
 
 	$memberscount = mysqli_num_rows($query);
 	while($fammember = $db->fetch_array($query)) {
-		
+		$gender_bit = "";
+		$class_bit = "";
 		$famclass = $family['class'];
+		$famgender = $fammember['gender'];
 		
 		foreach($classes as $key => $value) {
 			$checked = "";
@@ -515,4 +584,65 @@ if($action == "filter_member") {
 	eval("\$page = \"".$templates->get("family_filter_members")."\";");
 	output_page($page);	
 }
+
+// claim character
+if($action == "claim") {
+	$fmid = $mybb->get_input('id');
+	// as member
+	if(!empty($uid)) {
+		$field_username = $mybb->settings['familycp_username'];
+		$username = $mybb->user['fid'.$field_username];
+	}
+	//as guest
+	else {
+		$username = $mybb->get_input('username');		
+	}
+	$new_record = array(
+		"claim_username" => $db->escape_string($username),
+		"claim_timestamp" => TIME_NOW
+	);
+	$db->update_query("families_members", $new_record, "fmid = '$fmid'");
+	redirect("index.php", "{$lang->family_claimed}");
+}
+
+// delete claim or member from family
+if($action == "free") {
+	$fmid = $mybb->get_input('id');
+	$field_username = $mybb->settings['familycp_username'];
+	$username = $mybb->user['fid'.$field_username];
+
+	// only author, claimed user or team can delete claim
+	$query = $db->query("SELECT fid FROM ".TABLE_PREFIX."families_members
+		WHERE fmid = '$fmid'");
+	$fid = $db->fetch_field($query, "fid");
+	$query = $db->query("SELECT uid FROM ".TABLE_PREFIX."families
+		WHERE fid = '$fid'");
+	$query = $db->query("SELECT claim_username FROM ".TABLE_PREFIX."families_members
+		WHERE fmid = '$fmid'");
+	$claimed_username = $db->fetch_field($query, "claim_username");
+	$family_uid = $db->fetch_field($query, "uid");
+	if($uid == $family_uid || $mybb->usergroup['cancp'] == "1" || $username == $claimed_username) {
+		$new_record = array(
+			"claim_username" => "",
+			"claim_timestamp" => ""
+		);
+		$db->update_query("families_members", $new_record, "fmid = '$fid'");
+	}
+	redirect("family.php", "{$lang->family_claim_deleted}");
+}	
+
+// you're already member of this family?
+if($action == "take") {
+	$fmid = $mybb->get_input('id');
+	$field_username = $mybb->settings['familycp_username'];
+	$username = $mybb->user['fid'.$field_username];
+	$new_record = array(
+		"uid" => (int)$uid,
+		"claim_username" => $db->escape_string($username),
+		"claim_timestamp" => TIME_NOW
+	);
+	$db->update_query("families_members", $new_record, "fmid = '$fmid'");
+	redirect("index.php", "{$lang->family_claimed}");	
+}
+
 ?>
