@@ -27,9 +27,10 @@ $l['family_families_found'] = "Familien gefunden";
 $l['family_member_found'] = "spielbare Familienmitglieder gefunden";
 $l['family_members_free'] = "Freie Mitglieder";
 $l['family_claim'] = "reservieren";
-$l['family_info_free'] = "Dieses Familienmitglied wird noch nicht bespielt! Du kannst es also <a href=\"family.php?action=claim&id={1}\">reservieren</a> oder <a href=\"family.php?action=take&id={1}\">besetzen</a>!";
-$l['family_info_unplayable'] = "Dieses Familienmitglied ist nicht spielbar und kann daher leider nicht übernommen werden!";
-$l['family_info_claimed'] = "Dieses Familienmitglied ist bereits reserviert / bespielt und kann daher nicht übernommen werden!";
+$l['family_info_free'] = "&raquo; Reservieren!";
+$l['family_info_take'] = "&raquo; Das bin ich!";
+$l['family_info_unplayable'] = "Nicht spielbar!";
+$l['family_info_claimed'] = "Gehört zu:";
 
 // forms
 $l['family_lastname'] = "Nachname";

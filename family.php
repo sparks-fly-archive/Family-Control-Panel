@@ -350,6 +350,7 @@ if($action == "view") {
 			}
 
 			$fammember['claimed'] = "";
+			$famuser = "";
 
 			// check if already registered...
 			$famuser = get_user($fammember['uid']);
@@ -364,8 +365,7 @@ if($action == "view") {
 			}
 
 			// not registered yet?
-			if(empty($famuser)) {
-
+			if($famuser['uid'] == "0" OR empty($famuser)) {
 				// generate picture from database url (if set), otherwise use set default image
 				$img_class = "free-img";
 				if(empty($fammember['picture'])) {
@@ -379,22 +379,32 @@ if($action == "view") {
 				if(empty($fammember['claim_username']) && $fammember['playable'] == "1") {
 					// guests can't take a family member
 					if(!empty($uid)) {
-						eval("\$fammember['claimed'] .= \"".$templates->get("family_claim")."\";");
+						eval("\$fammember['claimed'] = \"".$templates->get("family_claim")."\";");
 					}
-					// they need a special template to do that...
-					eval("\$fammember['claimed'] .= \"".$templates->get("family_claim_guest")."\";");
+					else { 
+						eval("\$fammember['claimed'] = \"".$templates->get("family_claim_guest")."\";");
+					}
 				}
 				elseif($fammember['playable'] == "0") {
-					eval("\$fammember['claimed'] .= \"".$templates->get("family_claim_unplayable")."\";");	
+					eval("\$fammember['claimed'] = \"".$templates->get("family_claim_unplayable")."\";");	
 				}
-				$lang->family_info_free = $lang->sprintf($lang->family_info_free, $fammember['fmid']);
+				elseif(!empty($fammember['claim_username'])) {
+					$field_username = $mybb->settings['familycp_username'];
+					$username = $mybb->user['fid'.$field_username];
+					$fammember['take'] = "";
+					if($username == $fammember['claim_username'] && !empty($uid)) {
+						eval("\$fammember['take'] = \"".$templates->get("family_claimed_take")."\";");
+					}
+					eval("\$fammember['claimed'] = \"".$templates->get("family_claimed")."\";");	
+				}
 			}
 			else {
-				// ignore family member's name and get matching user's name! 
+				// ignore family member's name and username and get matching user's names! 
 				$fammember['fullname'] = build_profile_link($famuser['username'], $famuser['uid']);
 				// generate picture from user avatar
 				$img_class ="taken-img";
 				$fammember['img'] = "<a href=\"member.php?action=profile&uid={$fammember['uid']}\"><img src=\"{$famuser['avatar']}\" class=\"family-picture\" /></a></div>";
+				$fammember['take'] = "";
 				eval("\$fammember['claimed'] .= \"".$templates->get("family_claimed")."\";");
 			}
 
@@ -409,7 +419,6 @@ if($action == "view") {
 				}
 				$edit_fammember .= "</div>";
 			}
-
 			eval("\$fammember_bit .= \"".$templates->get("family_view_generations_member")."\";");
 		}
 
@@ -588,6 +597,9 @@ if($action == "filter_member") {
 // claim character
 if($action == "claim") {
 	$fmid = $mybb->get_input('id');
+	$query = $db->query("SELECT fid FROM ".TABLE_PREFIX."families_members 
+		WHERE fmid = '$fmid'");
+	$fid = $db->fetch_field($query, "fid");
 	// as member
 	if(!empty($uid)) {
 		$field_username = $mybb->settings['familycp_username'];
@@ -595,14 +607,14 @@ if($action == "claim") {
 	}
 	//as guest
 	else {
-		$username = $mybb->get_input('username');		
+		$guest = $mybb->get_input('guest');		
 	}
 	$new_record = array(
-		"claim_username" => $db->escape_string($username),
+		"claim_username" => $db->escape_string($guest),
 		"claim_timestamp" => TIME_NOW
 	);
 	$db->update_query("families_members", $new_record, "fmid = '$fmid'");
-	redirect("index.php", "{$lang->family_claimed}");
+	redirect("family.php?action=view&id={$fid}", "{$lang->family_claimed}");
 }
 
 // delete claim or member from family
@@ -610,6 +622,10 @@ if($action == "free") {
 	$fmid = $mybb->get_input('id');
 	$field_username = $mybb->settings['familycp_username'];
 	$username = $mybb->user['fid'.$field_username];
+
+	$query = $db->query("SELECT fid FROM ".TABLE_PREFIX."families_members 
+		WHERE fmid = '$fmid'");
+	$fid = $db->fetch_field($query, "fid");
 
 	// only author, claimed user or team can delete claim
 	$query = $db->query("SELECT fid FROM ".TABLE_PREFIX."families_members
@@ -623,12 +639,13 @@ if($action == "free") {
 	$family_uid = $db->fetch_field($query, "uid");
 	if($uid == $family_uid || $mybb->usergroup['cancp'] == "1" || $username == $claimed_username) {
 		$new_record = array(
+			"uid" => (int)"0",
 			"claim_username" => "",
 			"claim_timestamp" => ""
 		);
-		$db->update_query("families_members", $new_record, "fmid = '$fid'");
+		$db->update_query("families_members", $new_record, "fmid = '$fmid'");
 	}
-	redirect("family.php", "{$lang->family_claim_deleted}");
+	redirect("family.php?action=view&id={$fid}", "{$lang->family_claim_deleted}");
 }	
 
 // you're already member of this family?
@@ -636,13 +653,18 @@ if($action == "take") {
 	$fmid = $mybb->get_input('id');
 	$field_username = $mybb->settings['familycp_username'];
 	$username = $mybb->user['fid'.$field_username];
+
+	$query = $db->query("SELECT fid FROM ".TABLE_PREFIX."families_members 
+		WHERE fmid = '$fmid'");
+	$fid = $db->fetch_field($query, "fid");
+
 	$new_record = array(
 		"uid" => (int)$uid,
 		"claim_username" => $db->escape_string($username),
 		"claim_timestamp" => TIME_NOW
 	);
 	$db->update_query("families_members", $new_record, "fmid = '$fmid'");
-	redirect("index.php", "{$lang->family_claimed}");	
+	redirect("family.php?action=view&id={$fid}", "{$lang->family_claimed}");	
 }
 
 ?>

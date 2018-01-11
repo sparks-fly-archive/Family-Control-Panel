@@ -56,8 +56,37 @@ function family_install()
   				PRIMARY KEY (`fmid`)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;");
 	}
+}
 
-	// create settinggroup
+function family_is_installed()
+{
+    global $db;
+
+    if($db->table_exists("families")) {
+        return true;
+    }
+    return false;
+}
+
+function family_uninstall()
+{
+	global $db;
+
+	if($db->table_exists("families")) {
+		$db->query("DROP TABLE `mybb_families`");
+	}
+
+	if($db->table_exists("families_members")) {
+		$db->query("DROP TABLE `mybb_families_members`");
+	}
+
+}
+
+function family_activate()
+{
+	global $db, $mybb;
+
+		// create settinggroup
 	$setting_group = array(
     	'name' => 'familycp',
     	'title' => 'Family Control Panel',
@@ -98,39 +127,20 @@ function family_install()
 
 	// Don't forget this!
 	rebuild_settings();
-}
-
-function family_is_installed()
-{
-    global $db;
-
-    if($db->table_exists("families")) {
-        return true;
-    }
-    return false;
-}
-
-function family_uninstall()
-{
-	global $db;
-
-	if($db->table_exists("families")) {
-		$db->query("DROP TABLE `mybb_families`");
-	}
-
-	if($db->table_exists("families_members")) {
-		$db->query("DROP TABLE `mybb_families_members`");
-	}
-
-}
-
-function family_activate()
-{
 
 }
 
 function family_deactivate()
 {
+
+	global $db;
+
+	// drop settings
+	$db->delete_query('settings', "name LIKE '%familycp_%");
+	$db->delete_query('settinggroups', "name = 'familycp'");
+
+	// Don't forget this
+	rebuild_settings();
 
 }
 
