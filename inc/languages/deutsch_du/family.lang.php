@@ -60,4 +60,5 @@ $l['family_founder'] = "Gründungsfamilie";
 // misc
 $l['family_family_added'] = "Deine Familie wurde hinzugefügt!";
 $l['family_claimed'] = "Der Charakter wurde für dich reserviert!";
+$l['family_thread_text'] = "Ich bin ein Blindtext.";
 ?>

@@ -76,13 +76,44 @@ if($action == "addfamily") {
 // add family backend
 if($action == "do_addfamily") {
 
+    // STARTSCHUSS ERSTELLEN!
+    // Set up posthandler.
+  	require_once MYBB_ROOT."inc/datahandlers/post.php";
+  	$posthandler = new PostDataHandler("insert");
+  	$posthandler->action = "thread";
+
+  	// Set the thread data that came from the input to the $thread array.
+  	$new_thread = array(
+  		"fid" => $mybb->settings['familycp_fid'],
+  		"subject" => $db->escape_string("{$lang->family_family} {$mybb->get_input('lastname')}"),
+  		"prefix" => "0",
+  		"icon" => "0",
+  		"uid" => $mybb->user['uid'],
+  		"username" => $mybb->user['username'],
+  		"message" => "{$lang->family_thread_text}",
+  		"ipaddress" => $session->packedip
+  	);
+
+  	if($pid != '')
+  	{
+  		$new_thread['pid'] = $pid;
+  	}
+
+  	$posthandler->set_data($new_thread);
+
+  	// Now let the post handler do all the hard work.
+  	$valid_thread = $posthandler->validate_thread();
+    $thread_info = $posthandler->insert_thread();
+    $tid = $thread_info['tid'];
+
 	// insert family into database
 	$new_record = array(
 		"uid" => (int)$uid,
 		"lastname" => $db->escape_string($mybb->get_input('lastname')),
 		"description" => $db->escape_string($mybb->get_input('description')),
 		"class" => $db->escape_string($mybb->get_input('class')),
-		"founder" => (int)$founder
+		"founder" => (int)$founder,
+		"tid" => (int)$tid
 	);
 	$db->insert_query("families", $new_record);
 
