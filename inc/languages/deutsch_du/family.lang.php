@@ -56,9 +56,17 @@ $l['family_add_yourself'] = "[ <strong><em>Wichtig</em></strong>: Du fügst dich
 $l['family_age_start'] = "Zwischen";
 $l['family_age_end'] = "und";
 $l['family_founder'] = "Gründungsfamilie";
+$l['family_wanted_link'] = "Gesuchslink";
+$l['family_wanted'] = "Zum Gesuch";
 
 // misc
 $l['family_family_added'] = "Deine Familie wurde hinzugefügt!";
 $l['family_claimed'] = "Der Charakter wurde für dich reserviert!";
 $l['family_thread_text'] = "Ich bin ein Blindtext.";
+$l['family_date'] = "Reserviert am";
+
+// Alerts
+$l['family_alert_claimed'] = "Dein Familienmitglied {2} wurde reserviert!";
+$l['myalerts_setting_claimed'] = "Benachrichtigung bei neu reservierten Familienmitgliedern bekommen?"; 
+
 ?>
