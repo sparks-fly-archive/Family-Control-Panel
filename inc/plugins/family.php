@@ -919,7 +919,7 @@ function family_activate()
 	<br />
 	<table cellspacing="3" cellpadding="3" class="tborder smalltext">
 		<tr>
-			<td class="thead" colspan="6">
+			<td class="thead" colspan="5">
 				{$memberscount} {$lang->family_member_found}
 			</td>
 		</tr>
@@ -932,9 +932,6 @@ function family_activate()
 			</td>
 			<td class="tcat">
 				{$lang->family_gender}
-			</td>
-			<td class="tcat">
-				{$lang->family_claim}
 			</td>
 			<td class="tcat">
 				{$lang->family_family}
@@ -969,9 +966,6 @@ function family_activate()
 	</td>
 	<td class="trow1" align="center">
 		{$genders[$famgender]}
-	</td>
-	<td class="trow1" align="center">
-		{$lang->family_claim}
 	</td>
 		<td class="trow1" align="center">
 		{$family[\'family_link\']}
@@ -1563,6 +1557,7 @@ function family_member_profile_end()
 				$field_username = "fid".$mybb->settings['familycp_username'];
 				$username = $db->query("SELECT $field_username FROM ".TABLE_PREFIX."userfields WHERE ufid = '$fammember[uid]'");
 				$fammember['take'] = "";
+				$fammember['claim_username'] = $db->fetch_field($username, $field_username);
 				eval("\$fammember['claimed'] .= \"".$templates->get("family_claimed")."\";");
 			}
 
@@ -1735,6 +1730,7 @@ function family_showthread_start()
 					$field_username = "fid".$mybb->settings['familycp_username'];
 					$username = $db->query("SELECT $field_username FROM ".TABLE_PREFIX."userfields WHERE ufid = '$fammember[uid]'");
 					$fammember['take'] = "";
+					$fammember['claim_username'] = $db->fetch_field($username, $field_username);
 					eval("\$fammember['claimed'] .= \"".$templates->get("family_claimed")."\";");
 				}
 
@@ -1765,25 +1761,28 @@ function family_showthread_start()
 function family_index_start() {
 	global $db, $mybb, $templates, $lang, $index_family;
 	$lang->load("family");
-	$field_username = "fid".$mybb->settings['familycp_username'];
-	$username = $db->escape_string($mybb->user[$field_username]);
 
-	// get claims of online user and show them on index page
-	$query = $db->query("SELECT * FROM ".TABLE_PREFIX."families_members
-		LEFT JOIN ".TABLE_PREFIX."families ON ".TABLE_PREFIX."families_members.fid = ".TABLE_PREFIX."families.fid
-		WHERE claim_username = '$username'
-		ORDER BY claim_timestamp ASC");
-	while($claim = $db->fetch_array($query)) {
-		$fid = $claim['fid'];
-		$claim['claim_timestamp'] = my_date("relative", $claim['claim_timestamp']);
-		$claim['family_link'] = "<a href=\"family.php?action=view&id={$fid}\" target=\"blank_\">{$claim['lastname']}</a>";
-		eval("\$index_family_bit .= \"".$templates->get("index_family_bit")."\";");		
-	}
+	if(!empty($mybb->user['uid'])) {
+		$field_username = "fid".$mybb->settings['familycp_username'];
+		$username = $db->escape_string($mybb->user[$field_username]);
 
-	// set template
-	$index_family = "";
-	if(mysqli_num_rows($query) >= "1") {
-		eval("\$index_family = \"".$templates->get("index_family")."\";");	
+		// get claims of online user and show them on index page
+		$query = $db->query("SELECT * FROM ".TABLE_PREFIX."families_members
+			LEFT JOIN ".TABLE_PREFIX."families ON ".TABLE_PREFIX."families_members.fid = ".TABLE_PREFIX."families.fid
+			WHERE claim_username = '$username'
+			ORDER BY claim_timestamp ASC");
+		while($claim = $db->fetch_array($query)) {
+			$fid = $claim['fid'];
+			$claim['claim_timestamp'] = my_date("relative", $claim['claim_timestamp']);
+			$claim['family_link'] = "<a href=\"family.php?action=view&id={$fid}\" target=\"blank_\">{$claim['lastname']}</a>";
+			eval("\$index_family_bit .= \"".$templates->get("index_family_bit")."\";");		
+		}
+
+		// set template
+		$index_family = "";
+		if(mysqli_num_rows($query) >= "1") {
+			eval("\$index_family = \"".$templates->get("index_family")."\";");	
+		}
 	}
 }
 

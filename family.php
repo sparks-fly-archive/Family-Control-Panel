@@ -54,7 +54,6 @@ if(empty($action)) {
 
 // faq page to help members out ;)
 if($action == "faq") {
-
 	// set template
 	eval("\$page = \"".$templates->get("family_faq")."\";");
 	output_page($page);	
@@ -646,7 +645,7 @@ if($action == "claim") {
 	$fid = $db->fetch_field($query, "fid");
 	$query = $db->query("SELECT uid FROM ".TABLE_PREFIX."families
 		WHERE fid = '$fid'");
-	$creator = $db->fetch_field($query, "id");
+	$creator = $db->fetch_field($query, "uid");
 	$query = $db->query("SELECT fullname FROM ".TABLE_PREFIX."families_members 
 		WHERE fmid = '$fmid'");
 	$fullname = $db->fetch_field($query, "fullname");
@@ -674,7 +673,6 @@ if($action == "claim") {
     	]); 
     	MybbStuff_MyAlerts_AlertManager::getInstance()->addAlert($alert);
   	} 
-
 
 	redirect("family.php?action=view&id={$fid}", "{$lang->family_claimed}");
 }
